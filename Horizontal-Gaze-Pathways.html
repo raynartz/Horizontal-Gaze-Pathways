@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Horizontal Gaze Pathways Simulator</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;background:#101b2c;color:#eef4ff;
+  font:16px system-ui,sans-serif;
+}
+main{max-width:1120px;margin:auto;padding:24px}
+h1{font-size:28px;margin:0 0 8px}
+h2{font-size:19px;margin:0 0 12px}
+p{line-height:1.6}
+.panel{
+  background:#192940;border:1px solid #334a65;
+  border-radius:16px;padding:18px;margin:16px 0;
+}
+.note,.muted{color:#b7c7dc}
+.note{font-size:14px}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button,select{
+  font:inherit;color:#eef4ff;background:#263e5e;
+  border:1px solid #6681a1;border-radius:8px;
+  padding:10px;cursor:pointer;
+}
+button.active{background:#176c83;border-color:#65dde7}
+button:hover,select:hover{border-color:#65dde7}
+button:focus-visible,select:focus-visible,input:focus-visible{
+  outline:3px solid #ffd47c;outline-offset:3px;
+}
+.columns{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+fieldset{border:1px solid #526b89;border-radius:12px;padding:14px}
+legend{padding:0 8px;font-weight:600}
+.check{display:block;margin:10px 0;line-height:1.5}
+input{accent-color:#56d3df}
+svg{display:block;width:100%;height:auto}
+#status{color:#ffd47c}
+#findings{line-height:1.6}
+a{color:#8ddbe9}
+.node{fill:#263e5e;stroke:#6986a5;stroke-width:2}
+.wire{fill:none;stroke:#425a74;stroke-width:5}
+.label{fill:#edf4ff;font-size:15px;text-anchor:middle}
+.small{fill:#b7c7dc;font-size:13px;text-anchor:middle}
+footer{
+  text-align:center;margin-top:28px;padding-top:16px;
+  border-top:1px solid #334a65;
+}
+@media(max-width:650px){
+  main{padding:14px}
+  h1{font-size:24px}
+  .columns{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<main>
+<h1>Horizontal Gaze Pathways</h1>
+<p class="muted">
+  Horizontal saccadic commands, peripheral ocular motor deficits,
+  INO, and one-and-a-half syndrome.
+  Anterior view: the patient's right side is on your left.
+</p>
+
+<div class="panel">
+  <div class="controls">
+    <button id="right" type="button">Look RIGHT</button>
+    <button id="center" type="button">Primary position</button>
+    <button id="left" type="button">Look LEFT</button>
+    <button id="play" type="button">Pause</button>
+    <button id="reset" type="button">Reset to normal</button>
+  </div>
+
+  <div class="controls" style="margin-top:14px">
+    <label for="playback">Playback:</label>
+    <select id="playback">
+      <option value="repeat">Repeat selected gaze</option>
+      <option value="alternate">Alternate right and left</option>
+    </select>
+
+    <label for="speed">Speed:</label>
+    <select id="speed">
+      <option value=".6">Slow</option>
+      <option value="1" selected>Normal</option>
+      <option value="1.5">Fast</option>
+    </select>
+  </div>
+
+  <div class="controls" style="margin-top:14px">
+    <label for="preset">Example:</label>
+    <select id="preset">
+      <option value="normal">Normal</option>
+      <option value="RVI">Right CN VI nerve palsy</option>
+      <option value="LVI">Left CN VI nerve palsy</option>
+      <option value="RN">Right abducens nucleus lesion</option>
+      <option value="LN">Left abducens nucleus lesion</option>
+      <option value="RP">Right PPRF lesion</option>
+      <option value="LP">Left PPRF lesion</option>
+      <option value="RM">Right INO</option>
+      <option value="LM">Left INO</option>
+      <option value="BINO">Bilateral INO</option>
+      <option value="ROAH">Right one-and-a-half syndrome</option>
+      <option value="LOAH">Left one-and-a-half syndrome</option>
+      <option value="custom">Custom combination</option>
+    </select>
+  </div>
+
+  <div class="columns" style="margin-top:18px">
+    <fieldset>
+      <legend>Patient's RIGHT side</legend>
+      <label class="check"><input id="RP" type="checkbox"> PPRF lesion</label>
+      <label class="check"><input id="RN" type="checkbox"> Abducens nucleus lesion</label>
+      <label class="check"><input id="RVI" type="checkbox"> CN VI nerve lesion</label>
+      <label class="check"><input id="RM" type="checkbox"> MLF lesion</label>
+      <label class="check"><input id="RIII" type="checkbox"> CN III medial rectus pathway lesion</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Patient's LEFT side</legend>
+      <label class="check"><input id="LP" type="checkbox"> PPRF lesion</label>
+      <label class="check"><input id="LN" type="checkbox"> Abducens nucleus lesion</label>
+      <label class="check"><input id="LVI" type="checkbox"> CN VI nerve lesion</label>
+      <label class="check"><input id="LM" type="checkbox"> MLF lesion</label>
+      <label class="check"><input id="LIII" type="checkbox"> CN III medial rectus pathway lesion</label>
+    </fieldset>
+  </div>
+
+  <label class="check">
+    <input id="reference" type="checkbox" checked>
+    Show normal gaze reference
+  </label>
+</div>
+
+<div class="panel">
+  <h2 id="heading"></h2>
+  <p id="status"></p>
+
+  <svg viewBox="0 0 1000 310" role="img"
+       aria-label="Anterior view of horizontal eye movements">
+    <defs>
+      <radialGradient id="sclera">
+        <stop offset="0" stop-color="white"/>
+        <stop offset="1" stop-color="#b6c9dc"/>
+      </radialGradient>
+      <radialGradient id="iris">
+        <stop offset="0" stop-color="#174456"/>
+        <stop offset=".7" stop-color="#419bb0"/>
+        <stop offset="1" stop-color="#183c50"/>
+      </radialGradient>
+      <clipPath id="clipR">
+        <ellipse cx="280" cy="155" rx="150" ry="90"/>
+      </clipPath>
+      <clipPath id="clipL">
+        <ellipse cx="720" cy="155" rx="150" ry="90"/>
+      </clipPath>
+    </defs>
+
+    <text x="280" y="30" class="label">Patient's RIGHT eye</text>
+    <text x="720" y="30" class="label">Patient's LEFT eye</text>
+
+    <ellipse cx="280" cy="155" rx="150" ry="90" fill="url(#sclera)"/>
+    <ellipse cx="720" cy="155" rx="150" ry="90" fill="url(#sclera)"/>
+
+    <g clip-path="url(#clipR)">
+      <g id="eyeR">
+        <circle r="48" fill="url(#iris)"/>
+        <circle r="21" fill="#07101b"/>
+        <circle cx="-14" cy="-16" r="6" fill="white" opacity=".7"/>
+      </g>
+      <circle id="refR" r="53" fill="none"
+              stroke="#27a7b7" stroke-width="3" stroke-dasharray="7 5"/>
+    </g>
+
+    <g clip-path="url(#clipL)">
+      <g id="eyeL">
+        <circle r="48" fill="url(#iris)"/>
+        <circle r="21" fill="#07101b"/>
+        <circle cx="-14" cy="-16" r="6" fill="white" opacity=".7"/>
+      </g>
+      <circle id="refL" r="53" fill="none"
+              stroke="#27a7b7" stroke-width="3" stroke-dasharray="7 5"/>
+    </g>
+
+    <path d="M490 100 Q460 155 490 210 M510 100 Q540 155 510 210"
+          fill="none" stroke="#8198b4" stroke-width="4"/>
+    <text x="500" y="245" class="small">Nose</text>
+
+    <text id="motionR" x="280" y="280" class="label"></text>
+    <text id="motionL" x="720" y="280" class="label"></text>
+  </svg>
+</div>
+
+<div class="panel">
+  <h2>Functional pathway</h2>
+  <p class="note">
+    Green: transmitted command. Red: selected lesion.
+    Gray: inactive or no transmitted input.
+    Arrows indicate signal direction.
+    This is a functional diagram, not an anatomical cross-section.
+  </p>
+
+  <svg viewBox="0 0 1000 590" role="img"
+       aria-label="PPRF, abducens nuclei, crossed MLF pathways and ocular muscles">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10"
+              refX="9" refY="5" markerWidth="5" markerHeight="5"
+              orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 Z" fill="context-stroke"/>
+      </marker>
+    </defs>
+
+    <text x="240" y="25" class="label">Patient's RIGHT side</text>
+    <text x="760" y="25" class="label">Patient's LEFT side</text>
+
+    <g class="wire" marker-end="url(#arrow)">
+      <path id="wRP" d="M240 110 V145"/>
+      <path id="wLP" d="M760 110 V145"/>
+
+      <path id="wRVI" d="M150 200 H75 V495"/>
+      <path id="wLVI" d="M850 200 H925 V495"/>
+
+      <!-- Internuclear fibers cross before ascending
+           in the MLF on the destination CN III side. -->
+      <path id="wLM" d="M330 200 L760 300 V330"/>
+      <path id="wRM" d="M670 200 L240 300 V330"/>
+
+      <path id="wRIII" d="M240 390 V495"/>
+      <path id="wLIII" d="M760 390 V495"/>
+    </g>
+
+    <g>
+      <rect id="nodeRP" class="node" x="145" y="55" width="190" height="55" rx="10"/>
+      <rect id="nodeLP" class="node" x="665" y="55" width="190" height="55" rx="10"/>
+
+      <rect id="nodeRN" class="node" x="145" y="145" width="190" height="80" rx="10"/>
+      <rect id="nodeLN" class="node" x="665" y="145" width="190" height="80" rx="10"/>
+
+      <rect id="nodeRM" class="node" x="160" y="268" width="160" height="42" rx="10"/>
+      <rect id="nodeLM" class="node" x="680" y="268" width="160" height="42" rx="10"/>
+
+      <rect class="node" x="145" y="330" width="190" height="60" rx="10"/>
+      <rect class="node" x="665" y="330" width="190" height="60" rx="10"/>
+
+      <rect id="nodeRIII" class="node" x="155" y="420" width="170" height="42" rx="10"/>
+      <rect id="nodeLIII" class="node" x="675" y="420" width="170" height="42" rx="10"/>
+
+      <rect id="nodeRVI" class="node" x="15" y="355" width="120" height="50" rx="10"/>
+      <rect id="nodeLVI" class="node" x="865" y="355" width="120" height="50" rx="10"/>
+
+      <rect class="node" x="15" y="495" width="120" height="55" rx="10"/>
+      <rect class="node" x="155" y="495" width="170" height="55" rx="10"/>
+      <rect class="node" x="675" y="495" width="170" height="55" rx="10"/>
+      <rect class="node" x="865" y="495" width="120" height="55" rx="10"/>
+    </g>
+
+    <g class="label">
+      <text x="240" y="88">Right PPRF</text>
+      <text x="760" y="88">Left PPRF</text>
+
+      <text x="240" y="176">Right abducens</text>
+      <text x="240" y="199">nucleus</text>
+      <text x="760" y="176">Left abducens</text>
+      <text x="760" y="199">nucleus</text>
+
+      <text x="240" y="294">Right MLF</text>
+      <text x="760" y="294">Left MLF</text>
+
+      <text x="240" y="355">Right CN III nucleus</text>
+      <text x="240" y="378">MR subnucleus</text>
+      <text x="760" y="355">Left CN III nucleus</text>
+      <text x="760" y="378">MR subnucleus</text>
+
+      <text x="240" y="447">CN III → MR</text>
+      <text x="760" y="447">CN III → MR</text>
+      <text x="75" y="385">Right CN VI</text>
+      <text x="925" y="385">Left CN VI</text>
+
+      <text x="75" y="528">Right LR</text>
+      <text x="240" y="528">Right MR</text>
+      <text x="760" y="528">Left MR</text>
+      <text x="925" y="528">Left LR</text>
+    </g>
+
+    <text x="500" y="252" class="small">Crossed internuclear projections</text>
+    <text x="500" y="580" class="small">
+      LR: lateral rectus • MR: medial rectus
+    </text>
+  </svg>
+</div>
+
+<div class="panel">
+  <h2>Interpretation</h2>
+  <div id="findings"></div>
+</div>
+
+<div class="panel note">
+  <h2>Teaching points</h2>
+  <p>
+    A horizontal saccadic command activates the PPRF on the side
+    toward which the patient looks. The ipsilateral abducens
+    nucleus supplies the ipsilateral lateral rectus through CN VI.
+    Its internuclear neurons cross and ascend in the opposite
+    MLF to the medial rectus subnucleus of CN III.
+  </p>
+  <p>
+    A peripheral CN VI lesion impairs ipsilateral abduction.
+    An abducens nucleus lesion impairs conjugate gaze toward
+    that side because both its motor and internuclear outputs
+    are interrupted. The PPRF selection illustrates impaired
+    ipsilateral horizontal saccadic commands; other eye movement
+    systems are outside this simulation.
+  </p>
+  <p>
+    An MLF lesion impairs ipsilateral adduction on gaze away
+    from the lesion, with possible abducting nystagmus in
+    the opposite eye. One-and-a-half syndrome combines an
+    ipsilateral horizontal gaze palsy with ipsilateral INO.
+    The remaining horizontal movement is contralateral abduction.
+  </p>
+
+  <h2>Model limitations</h2>
+  <p>
+    This simulator shows complete pathway interruptions and
+    schematic movement amplitudes. It starts from neutral
+    alignment to emphasize movement deficits; resting esotropia,
+    exotropia, and other deviations are not modeled.
+    Clinical INO may instead show slowed or partially restricted
+    adduction. Nystagmus timing and amplitude are illustrative.
+  </p>
+  <p>
+    The animated transitions are slowed for teaching and are
+    not physiological saccade waveforms. Convergence, pursuit,
+    VOR, vertical gaze, ptosis, and pupil responses are not
+    simulated. The CN III checkbox represents only its medial
+    rectus pathway, not the full phenotype of CN III palsy.
+    A CN VI nerve lesion plus an MLF lesion should not be
+    equated with an abducens nucleus lesion.
+  </p>
+  <p>
+    References:
+    <a href="https://eyewiki.aao.org/Internuclear_Ophthalmoplegia"
+       target="_blank" rel="noopener noreferrer">INO</a> ·
+    <a href="https://eyewiki.aao.org/One_And_a_Half_Syndrome"
+       target="_blank" rel="noopener noreferrer">One-and-a-half syndrome</a> ·
+    <a href="https://www.ncbi.nlm.nih.gov/books/NBK406/"
+       target="_blank" rel="noopener noreferrer">Ocular motor nerves</a>
+  </p>
+</div>
+
+<footer class="note">
+  <p>
+    Developed by <strong>Adisorn Ratanayotha</strong><br>
+    Faculty of Medicine Siriraj Hospital,<br>
+    Mahidol University, Thailand
+  </p>
+</footer>
+</main>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const keys=["RP","RN","RVI","RM","RIII","LP","LN","LVI","LM","LIII"];
+let direction="R",playing=true,time=0,last=null;
+const duration=7;
+
+function lesion(key){return $(key).checked;}
+function smooth(v){
+  v=Math.max(0,Math.min(1,v));
+  return v*v*(3-2*v);
+}
+function progress(){
+  if(time<1)return 0;
+  if(time<3)return smooth((time-1)/2);
+  if(time<5)return 1;
+  return 1-smooth((time-5)/2);
+}
+
+/*
+ Direction refers to the patient.
+ For right gaze:
+ right PPRF → right VI nucleus → right LR;
+ right VI internuclear neurons → left MLF → left MR.
+*/
+function signals(){
+  const s={
+    RP:false,LP:false,RN:false,LN:false,
+    RVI:false,LVI:false,RM:false,LM:false,
+    RIII:false,LIII:false
+  };
+  if(direction==="C")return s;
+
+  const d=direction;
+  const other=d==="R"?"L":"R";
+
+  s[d+"P"]=!lesion(d+"P");
+  s[d+"N"]=s[d+"P"]&&!lesion(d+"N");
+  s[d+"VI"]=s[d+"N"]&&!lesion(d+"VI");
+  s[other+"M"]=s[d+"N"]&&!lesion(other+"M");
+  s[other+"III"]=s[other+"M"]&&!lesion(other+"III");
+
+  return s;
+}
+
+function nystagmus(){
+  if(time<3||time>=5)return 0;
+  const t=time-3;
+  const phase=(t*2.2)%1;
+  const wave=phase<.85
+    ?1-2*phase/.85
+    :-1+2*(phase-.85)/.15;
+  return 6*wave*smooth(t/.2)*smooth((2-t)/.2);
+}
+
+function drawEyes(){
+  const s=signals(),p=progress();
+  const sign=direction==="R"?-1:direction==="L"?1:0;
+  let r=0,l=0;
+
+  if(direction==="R"){
+    r=s.RVI?sign*65*p:0;
+    l=s.LIII?sign*65*p:0;
+    if(s.RVI&&lesion("LM"))r+=sign*nystagmus();
+  }else if(direction==="L"){
+    r=s.RIII?sign*65*p:0;
+    l=s.LVI?sign*65*p:0;
+    if(s.LVI&&lesion("RM"))l+=sign*nystagmus();
+  }
+
+  $("eyeR").setAttribute("transform",`translate(${280+r} 155)`);
+  $("eyeL").setAttribute("transform",`translate(${720+l} 155)`);
+  $("refR").setAttribute("cx",280+sign*65*p);
+  $("refR").setAttribute("cy",155);
+  $("refL").setAttribute("cx",720+sign*65*p);
+  $("refL").setAttribute("cy",155);
+  for(const id of ["refR","refL"])
+    $(id).style.display=$("reference").checked?"":"none";
+
+  if(direction==="C"){
+    $("motionR").textContent="Primary position";
+    $("motionL").textContent="Primary position";
+  }else if(direction==="R"){
+    $("motionR").textContent=s.RVI?"Abduction":"Abduction impaired";
+    $("motionL").textContent=s.LIII?"Adduction":"Adduction impaired";
+  }else{
+    $("motionR").textContent=s.RIII?"Adduction":"Adduction impaired";
+    $("motionL").textContent=s.LVI?"Abduction":"Abduction impaired";
+  }
+}
+
+function drawCircuit(){
+  const s=signals();
+  const p=progress();
+  for(const key of keys){
+    const node=$("node"+key);
+    if(node){
+      node.style.fill=lesion(key)?"#713c4b":s[key]?"#17614e":"#263e5e";
+      node.style.stroke=lesion(key)?"#ff8888":s[key]?"#76e8bc":"#6986a5";
+    }
+    const wire=$("w"+key);
+    if(wire){
+      wire.style.stroke=lesion(key)?"#ff8888":s[key]?"#76e8bc":"#425a74";
+      wire.style.opacity=s[key]?(.35+.65*p):1;
+    }
+  }
+}
+
+function updateText(){
+  const selected=keys.filter(lesion);
+  const messages=[];
+
+  if(!selected.length)messages.push(
+    "Normal: both eyes move together toward the selected horizontal target."
+  );
+
+  for(const side of ["R","L"]){
+    const name=side==="R"?"Right":"Left";
+    const away=side==="R"?"left":"right";
+    if(lesion(side+"P"))messages.push(
+      `${name} PPRF lesion: horizontal saccadic commands toward the ${name.toLowerCase()} are interrupted.`
+    );
+    if(lesion(side+"N"))messages.push(
+      `${name} abducens nucleus lesion: conjugate horizontal gaze toward the ${name.toLowerCase()} is impaired.`
+    );
+    if(lesion(side+"VI"))messages.push(
+      `${name} CN VI nerve lesion: ${name.toLowerCase()} eye abduction is impaired; the fellow eye's adduction pathway can remain intact.`
+    );
+    if(lesion(side+"M"))messages.push(
+      `${name} MLF lesion: ${name.toLowerCase()} eye adduction is impaired on ${away} gaze. The opposite abducting eye may show nystagmus.`
+    );
+    if(lesion(side+"III"))messages.push(
+      `${name} CN III medial rectus pathway lesion: ${name.toLowerCase()} eye adduction is impaired. Other CN III functions are not shown.`
+    );
+    if((lesion(side+"P")||lesion(side+"N"))&&lesion(side+"M"))
+      messages.push(
+        `${name} one-and-a-half pattern: ipsilateral gaze palsy plus ipsilateral INO. Contralateral abduction remains if its pathway is intact.`
+      );
+  }
+
+  if(lesion("RM")&&lesion("LM"))messages.push(
+    "Bilateral INO: each eye has impaired adduction during gaze to the opposite side."
+  );
+  if(selected.length>1)messages.push(
+    "Additional selected lesions can eliminate otherwise preserved movements. Interpret custom combinations through the highlighted circuit."
+  );
+
+  $("findings").innerHTML=messages.map(t=>`<p>${t}</p>`).join("");
+  $("heading").textContent=direction==="C"
+    ?"Primary position"
+    :`Patient looks ${direction==="R"?"RIGHT":"LEFT"}`;
+
+  for(const [id,d] of [["right","R"],["center","C"],["left","L"]]){
+    $(id).classList.toggle("active",direction===d);
+    $(id).setAttribute("aria-pressed",String(direction===d));
+  }
+}
+
+function render(){
+  drawEyes();drawCircuit();
+  const phase=direction==="C"?"Primary position"
+    :time<1?"Primary position"
+    :time<3?"Attempting selected gaze"
+    :time<5?"Holding attempted gaze"
+    :"Returning to primary position";
+  $("status").textContent=(playing?"":"Paused · ")+phase;
+}
+function choose(d){
+  direction=d;time=0;last=null;updateText();render();
+}
+$("right").onclick=()=>choose("R");
+$("left").onclick=()=>choose("L");
+$("center").onclick=()=>choose("C");
+$("play").onclick=()=>{
+  playing=!playing;last=null;
+  $("play").textContent=playing?"Pause":"Play";
+  render();
+};
+$("reference").onchange=render;
+
+function clearLesions(){
+  for(const key of keys)$(key).checked=false;
+}
+const presets={
+  normal:[],RVI:["RVI"],LVI:["LVI"],RN:["RN"],LN:["LN"],
+  RP:["RP"],LP:["LP"],RM:["RM"],LM:["LM"],
+  BINO:["RM","LM"],ROAH:["RN","RM"],LOAH:["LN","LM"]
+};
+$("preset").onchange=()=>{
+  const selected=$("preset").value;
+  if(!(selected in presets))return;
+  clearLesions();
+  for(const key of presets[selected])$(key).checked=true;
+  choose(direction);
+};
+$("reset").onclick=()=>{
+  clearLesions();$("preset").value="normal";choose(direction);
+};
+for(const key of keys)$(key).onchange=()=>{
+  $("preset").value="custom";choose(direction);
+};
+document.addEventListener("visibilitychange",()=>{last=null;});
+
+function frame(now){
+  if(last!==null&&playing)
+    time+=Math.min((now-last)/1000,.1)*Number($("speed").value);
+  last=now;
+  if(time>=duration){
+    time%=duration;
+    if($("playback").value==="alternate"){
+      direction=direction==="R"?"L":"R";
+      updateText();
+    }
+  }
+  render();requestAnimationFrame(frame);
+}
+updateText();render();requestAnimationFrame(frame);
+</script>
+</body>
+</html>
